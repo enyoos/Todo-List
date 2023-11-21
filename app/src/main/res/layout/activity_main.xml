@@ -23,11 +23,11 @@
         android:text="Enter"
         tools:ignore="MissingConstraints" />
 
-    <TextView
-        android:id="@+id/outputNameField"
-        android:layout_width="372dp"
-        android:layout_height="18dp"
-        android:text="the name is : "
-        android:textAlignment="viewStart"
-        tools:ignore="MissingConstraints" />
+    <ListView
+        android:id="@+id/listView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#ED0000"
+        android:foregroundTint="#FFFFFF" />
+
 </LinearLayout>
