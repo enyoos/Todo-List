@@ -1,14 +1,18 @@
 package com.example.myapplication;
 
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
@@ -25,17 +29,38 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private static ArrayList<String> todos = new ArrayList<>();
+    private static final String FILENAME   = "db.ser";
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        String out = String.format("file %s is saved", FILENAME);
+//        Log.d("[MESSAGE]", "the activity is no longer being presented to the user");
+        ListView lV         = findViewById(R.id.listView);
+        ArrayAdapter<String> arr = (ArrayAdapter<String>) lV.getAdapter();
+
+        Utils.writeToFile( arr, this, FILENAME);
+        Log.d("[MESSAGE]", out);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
         EditText inputField = findViewById(R.id.inputNameField);
         ListView lV         = findViewById(R.id.listView);
         Button btn = findViewById(R.id.buttonEnter);
 
         // listView is just a list of text content
-        ArrayAdapter<String> arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos);
+        ArrayAdapter<String> arr = null;
+        if ( Utils.isFileExisting(FILENAME) )
+        {
+            Log.d("[MESSAGE]", "reading from the file" );
+            arr = Utils.readFromFile(FILENAME);
+        }
+        else arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos);
+
         lV.setAdapter(arr);
 
         lV.setOnItemClickListener(new AdapterView.OnItemClickListener() {
