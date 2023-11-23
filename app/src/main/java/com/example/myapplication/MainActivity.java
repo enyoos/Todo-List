@@ -26,6 +26,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -35,6 +36,7 @@ import java.util.Stack;
 public class MainActivity extends AppCompatActivity {
     private static LinkedList<String> todos;
     private static Stack<EntryTodo> todosMirror;
+    private static final String path = Environment.getExternalStorageDirectory().getPath() + "/Documents/Download/";
     private static final String FILENAME   = "db.ser";
 
     // usually this method is happening before
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        Utils.writeToFile( todos, this, FILENAME);
+        Utils.writeToFile( todos, this, path + FILENAME);
     }
 
     @Override
@@ -54,6 +56,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        Utils.log("the path : " + path);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         EditText inputField = findViewById(R.id.inputNameField);
@@ -62,19 +67,20 @@ public class MainActivity extends AppCompatActivity {
 
         // listView is just a list of text content
         ArrayAdapter<String> arr = null;
-        if ( Utils.isFileExisting(FILENAME, this) )
+        if ( Utils.isFileExisting(path + FILENAME ) )
         {
-            todos = Utils.readFromFile(FILENAME, this);
-            arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos );
+            todos = Utils.readFromFile( path + FILENAME, this);
+            Utils.log("here");
+            Utils.log("the arr : " + todos );
         }
         else
         {
             todos = new LinkedList<String>();
-            arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos);
         }
 
         // we're not going to serialize the todosMirror too
         todosMirror = new Stack<>();
+        arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos );
 
         lV.setAdapter(arr);
 

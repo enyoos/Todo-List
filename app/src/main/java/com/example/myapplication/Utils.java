@@ -37,7 +37,7 @@ public class Utils {
 //        }
 //        Log.d("[MESSAGE]", "external : " + external.getAbsolutePath());
         try {
-            FileOutputStream fileOutputStream = context.openFileOutput(filename, Context.MODE_PRIVATE);
+            FileOutputStream fileOutputStream = new FileOutputStream(new File ( filename ));
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
             objectOutputStream.writeObject(data);
             objectOutputStream.flush();
@@ -50,24 +50,25 @@ public class Utils {
         }
     }
 
-    public static boolean isFileExisting ( String filename, Context ctx )
+    public static boolean isFileExisting ( String filename )
     {
-        try {
-            ctx.openFileInput(filename);
-            return true;
-        }
-        catch( FileNotFoundException e )
-        {
-            return false;
-        }
+        File file = new File ( filename );
+        return file.exists();
     }
+
+    public static void log ( String msg )
+    {
+        String header = "[MESSAGE]";
+        Log.d(header, msg);
+    }
+
 
     public static LinkedList<String> readFromFile (String filename, Context ctx )
     {
         // provide the filename with the ext .
         LinkedList<String> ret = null;
         try {
-            FileInputStream fileInputStream = ctx.openFileInput(filename);
+            FileInputStream fileInputStream = new FileInputStream(new File ( filename ).getAbsolutePath() );
             ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
             ret = (LinkedList<String>) objectInputStream.readObject();
             objectInputStream.close();

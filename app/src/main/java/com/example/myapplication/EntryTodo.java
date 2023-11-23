@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 // storing important information
 // useful for undoing the todos
-public class EntryTodo implements Serializable {
+public class EntryTodo {
     private int idx;
     private String content;
     public EntryTodo( String t, int i ) { this.content = t; this.idx = i;}
