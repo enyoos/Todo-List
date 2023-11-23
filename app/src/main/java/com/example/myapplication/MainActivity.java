@@ -6,11 +6,13 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -22,44 +24,57 @@ import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Stack;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static ArrayList<String> todos = new ArrayList<>();
+    private static LinkedList<String> todos;
+    private static Stack<EntryTodo> todosMirror;
     private static final String FILENAME   = "db.ser";
 
+    // usually this method is happening before
+    // the activity is closed
     @Override
     protected void onStop() {
         super.onStop();
-        String out = String.format("file %s is saved", FILENAME);
-//        Log.d("[MESSAGE]", "the activity is no longer being presented to the user");
-        ListView lV         = findViewById(R.id.listView);
-        ArrayAdapter<String> arr = (ArrayAdapter<String>) lV.getAdapter();
+        Utils.writeToFile( todos, this, FILENAME);
+    }
 
-        Utils.writeToFile( arr, this, FILENAME);
-        Log.d("[MESSAGE]", out);
+    @Override
+    protected void onDestroy () {
+        // call the logic inside the onStop function
+        this.onStop();
+        super.onDestroy();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
         EditText inputField = findViewById(R.id.inputNameField);
         ListView lV         = findViewById(R.id.listView);
-        Button btn = findViewById(R.id.buttonEnter);
+        Button undoButton   = findViewById(R.id.undo);
 
         // listView is just a list of text content
         ArrayAdapter<String> arr = null;
-        if ( Utils.isFileExisting(FILENAME) )
+        if ( Utils.isFileExisting(FILENAME, this) )
         {
-            Log.d("[MESSAGE]", "reading from the file" );
-            arr = Utils.readFromFile(FILENAME);
+            todos = Utils.readFromFile(FILENAME, this);
+            arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos );
         }
-        else arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos);
+        else
+        {
+            todos = new LinkedList<String>();
+            arr = new ArrayAdapter<>(this, R.layout.white_txt_lv, R.id.list_content, todos);
+        }
+
+        // we're not going to serialize the todosMirror too
+        todosMirror = new Stack<>();
 
         lV.setAdapter(arr);
 
@@ -71,74 +86,70 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btn.setOnClickListener(new View.OnClickListener() {
+        undoButton.setOnClickListener( new View.OnClickListener()
+        {
             @Override
             public void onClick(View view) {
-                // get the name from the input field
-                String name = inputField.getText().toString();
-                addTodo(name, MainActivity.this , lV);
-                inputField.setText("");
+                unDo((ArrayAdapter<String>) lV.getAdapter(), MainActivity.this);
             }
+
         });
+
         inputField.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int i, KeyEvent event) {
                 if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) || i == EditorInfo.IME_ACTION_DONE ) {
-                    btn.performClick();
+                    String name = inputField.getText().toString();
+                    addTodo(name, MainActivity.this , lV);
+                    inputField.setText("");
                 }
                 return false;
             }
         });
     }
 
-    public void deleteTodo(ArrayAdapter<String> arr , int idx )
-    {
-        String toRemove = arr.getItem(idx);
-        arr.remove(toRemove);
-        arr.notifyDataSetChanged();
 
-        String out = String.format("removed : %s at the idx %d", toRemove, idx);
-        Log.d ( "[MESSAGE]", out);
+    private void unDo (ArrayAdapter<String> arr, Context ctx ) {
+        boolean isStackEmpty = todosMirror.isEmpty();
+        // make with toast
+        if ( isStackEmpty ) {
+            String msg = "Nothing to undo";
+            Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show();
+        }
+        else {
+            EntryTodo entry = todosMirror.pop();
+            todos.add(entry.getIdx(), entry.getString());
+            arr.notifyDataSetChanged();
+        }
     }
 
-    public void addTodo(String content, Context ctx, ListView lV )
+    private void deleteTodo(ArrayAdapter<String> arr , int idx )
+    {
+        String toRemove = arr.getItem(idx);
+        EntryTodo entry = new EntryTodo(toRemove, idx);
+        arr.remove(toRemove);
+        // push to the Todos mirror
+        todosMirror.push(entry);
+        arr.notifyDataSetChanged();
+    }
+
+    private void addTodo(String content, Context ctx, ListView lV )
     {
         if ( !content.isEmpty() )
         {
             // add the list to the thing
             todos.add(content);
             (( ArrayAdapter<String>) lV.getAdapter()).notifyDataSetChanged();
-
-            String out = String.format("added %s to the arr", content);
-            Log.d("[MESSAGE]", out);
         }
         else
         {
             // show the alert panel
-            String ttl = "invalid input";
-            String msg = "your name is empty";
-            showAlertPanel( ttl, msg, ctx ).show();
+            String ttl = "Invalid input";
+            String msg = "Your todo is empty";
+            Utils.showAlertPanel( ttl, msg, ctx ).show();
         }
     }
 
-    private AlertDialog showAlertPanel (String ttl , String msg, Context ctx )
-    {
-        AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
-        builder.setTitle(ttl);
-        builder.setMessage(msg);
-        builder.setCancelable(true);
 
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) { dialogInterface.cancel(); }
-        });
-
-        builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) { System.exit(0); }
-        });
-
-        return builder.create();
-    }
 
 }

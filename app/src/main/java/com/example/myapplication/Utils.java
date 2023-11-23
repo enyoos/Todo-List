@@ -1,12 +1,15 @@
 package com.example.myapplication;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 
+import android.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -20,60 +23,83 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.lang.reflect.Array;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Utils {
 
     // provide the filename with the ext .
-    public static void writeToFile(ArrayAdapter<String> data, Context context, String filename) {
+    public static void writeToFile(Serializable data, Context context, String /*path*/ filename) {
 
-        if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED)
-        {
-            // the permission is not granted
-            // so ask for the user to do grant it !
-            String perm = "Enable it, in order to save your todos locally";
-
-            // TODO : FINISH THIS
-            // TODO: 11/22/2023  
-//            ActivityCompat.requestPermissions( (Activity) context, new String[]{perm}, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        }
-        else {
-            try {
-                FileOutputStream fileOutputStream = new FileOutputStream(filename);
-                ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-                objectOutputStream.writeObject(data);
-                objectOutputStream.flush();
-                objectOutputStream.close();
+//        if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+//                != PackageManager.PERMISSION_GRANTED)
+//        {
+//        }
+//        Log.d("[MESSAGE]", "external : " + external.getAbsolutePath());
+        try {
+            FileOutputStream fileOutputStream = context.openFileOutput(filename, Context.MODE_PRIVATE);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(data);
+            objectOutputStream.flush();
+            objectOutputStream.close();
            }
-            catch (IOException e) {
-                Log.e("Exception", "File write failed: " + e.toString());
-            }
+        catch (IOException e) {
+            String ttl = "Uh...";
+            String msg = "Hint : you might give us permission to read/write files";
+            showAlertPanel(ttl, msg, context);
         }
     }
 
-    public static boolean isFileExisting ( String filename )
+    public static boolean isFileExisting ( String filename, Context ctx )
     {
-        File file =  new File ( filename );
-        return file.exists();
+        try {
+            ctx.openFileInput(filename);
+            return true;
+        }
+        catch( FileNotFoundException e )
+        {
+            return false;
+        }
     }
 
-    // returns the object
-    public static ArrayAdapter<String> readFromFile (String filename)
+    public static LinkedList<String> readFromFile (String filename, Context ctx )
     {
         // provide the filename with the ext .
-        ArrayAdapter<String> ret = null;
+        LinkedList<String> ret = null;
         try {
-            FileInputStream fileInputStream = new FileInputStream(filename);
+            FileInputStream fileInputStream = ctx.openFileInput(filename);
             ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
-            ret = (ArrayAdapter<String>) objectInputStream.readObject();
+            ret = (LinkedList<String>) objectInputStream.readObject();
             objectInputStream.close();
         }
         catch ( IOException | ClassNotFoundException e )
         {
-            Log.e("Exception", "File write failed: " + e.toString());
+            String ttl = "Uh...";
+            String msg = "Failed loading the todo storage file";
+            showAlertPanel(ttl, msg, ctx);
         }
 
         return ret;
+    }
+
+    public static AlertDialog showAlertPanel (String ttl , String msg, Context ctx )
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
+        builder.setTitle(ttl);
+        builder.setMessage(msg);
+        builder.setCancelable(true);
+
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) { dialogInterface.cancel(); }
+        });
+
+        builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) { System.exit(0); }
+        });
+
+        return builder.create();
     }
 
 }
